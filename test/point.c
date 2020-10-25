@@ -8,5 +8,6 @@ int main()
     printf("level 2:%p\n",test+1);
     printf("level 1:%p\n",test[1]);
     printf("level t:%p\n",list[1]);
+    printf("size: %lu\n",sizeof(test));
     return 0;
 }

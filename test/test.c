@@ -13,29 +13,142 @@ typedef struct commandInfo
 {
     int startPosi;
     int endPosi;
-    int num;//which one
+    //int num;//which one
     int pipeIn;//pipe number
     int pipeOut;//pipe number
+    int reIn;
+    int reOut;
 } commandInfo;
 
 
 int pipeNum;//total pipe number
 int commandNum;// total command number
+commandInfo commandTable[COMMAND_COUNT];
 
 char commandInput[COMMAND_BUF*COMMAND_COUNT*COMMAND_NUM];//input
 char commands[COMMAND_NUM][COMMAND_BUF];
-char *commandsPara[COMMAND_NUM]; // for execvp
+char *commandsPara[COMMAND_NUM]; // for execvp 每个命令现场生成
+char reInFile[COMMAND_BUF];
+char reOutFile[COMMAND_BUF];
 int allPipes[PIPE_COUNT][2];
 
+void praser()
+{
+    commandNum =0;
+    pipeNum = 0;
+    int cursor = 0;
+    int len = strlen(commandInput);
+    commandTable[commandNum].startPosi = 0;
+    for(cursor=0;cursor<len;cursor++)
+    {
+        if(commandInput[cursor]=='|')
+        {
+            commandTable[commandNum].endPosi = cursor-1;
+            commandTable[commandNum].pipeOut = pipeNum;
+            commandTable[++commandNum].pipeIn = pipeNum;
+            commandTable[commandNum].startPosi = cursor+1;
+            pipeNum++;
+        }
+        else
+            continue;
+    }
+    commandTable[commandNum].endPosi = cursor-1;
+    commandNum++;
+}
+
+void initCommand()
+{
+    commandInfo temp = {-1,-1,-1,-1,-1,-1};
+    for(int i=0;i<COMMAND_COUNT;i++)
+        commandTable[i] = temp;
+    for(int i=0;i<PIPE_COUNT;i++)
+        allPipes[i][0]=-1,allPipes[i][1]=-1;
+    for(int j=0;j<COMMAND_NUM;j++)
+        commandsPara[j] = NULL;
+    memset(commandInput,'\0',sizeof(commandInput));
+    memset(commands,0,sizeof(commands));
+
+}
+
+int redirect(int s,int e,int type)
+{
+    int j=0;
+    while(commandInput[s]==' ')
+        s++;
+    while(s<=e)
+    {
+        if(s==' ')
+            break;
+        if(type == 0)
+            reInFile[j++] =commandInput[s++];
+        else if (type==1)
+            reOutFile[j++] = commandInput[s++];
+    }
+    return s;
+}
 
 
-
-
-
+void trans(int cur)
+{
+    int s = commandTable[cur].startPosi;
+    int e = commandTable[cur].endPosi;
+    int cnt = 0,j=0,t=0;
+    while(commandInput[s]==' ')
+        s++;
+    while(commandInput[e]==' ')
+        e--;
+    printf("cur: %d\n",cur);
+    printf("s:%d e:%d\n",s,e);
+    for(int i=s;i<=e;i++)
+    {
+        if(commandInput[i]==' ')
+        {
+            while(commandInput[i]==' '&&i<=e)
+                i++;
+            i--;
+            if(j==0)
+                continue;
+            commands[cnt][j] = '\0';
+            commandsPara[t++] = commands[cnt];
+            j=0;
+            cnt++;
+            //printf("here: %s\n",commands[cnt-1]);
+        }
+        else if(commandInput[i]=='<')
+        {
+            i = redirect(i+1,e,0);
+            commandTable[cur].reIn = 1;
+        }   
+        else if(commandInput[i]=='>')
+        {
+            i = redirect(i+1,e,1);
+            commandTable[cur].reOut = 1;
+        }
+        else
+            commands[cnt][j++] = commandInput[i];
+    }
+    if(j!=0)
+    {
+        commands[cnt][j] = '\0';
+        commandsPara[t++] = commands[cnt];
+    }
+    commandsPara[t] = NULL;
+}
 
 
 int main(int argc,char ** argv)
 {
-    
+    initCommand();
+    scanf("%[^\n]",commandInput);
+    praser();
+    for(int i=0;i<commandNum;i++)
+    {
+        //printf("start:%d   end:%d\n",commandTable[i].startPosi,commandTable[i].endPosi);
+        //printf("pipeS:%d   pipeE:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
+        trans(i);
+        for(int j=0;commandsPara[j]!=NULL;j++)
+           printf("%s\n",commandsPara[j]);
+        printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
+    }
     return 0;
 }
