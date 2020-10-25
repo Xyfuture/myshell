@@ -20,7 +20,6 @@ typedef struct commandInfo
     int reOut;
 } commandInfo;
 
-
 int pipeNum;//total pipe number
 int commandNum;// total command number
 commandInfo commandTable[COMMAND_COUNT];
@@ -77,7 +76,7 @@ int redirect(int s,int e,int type)
         s++;
     while(s<=e)
     {
-        if(s==' ')
+        if(commandInput[s]==' ')
             break;
         if(type == 0)
             reInFile[j++] =commandInput[s++];
@@ -86,7 +85,6 @@ int redirect(int s,int e,int type)
     }
     return s;
 }
-
 
 void trans(int cur)
 {
@@ -117,12 +115,16 @@ void trans(int cur)
         else if(commandInput[i]=='<')
         {
             i = redirect(i+1,e,0);
+            i--;
             commandTable[cur].reIn = 1;
+           
         }   
         else if(commandInput[i]=='>')
         {
             i = redirect(i+1,e,1);
+            i--;
             commandTable[cur].reOut = 1;
+
         }
         else
             commands[cnt][j++] = commandInput[i];
