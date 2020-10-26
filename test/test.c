@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #define PIPE_COUNT 128
 #define COMMAND_BUF 256 // per command character size   一个参数的长度
 #define COMMAND_NUM 128 // command parameters          多少个参数
@@ -60,12 +61,16 @@ void initCommand()
     commandInfo temp = {-1,-1,-1,-1,-1,-1};
     for(int i=0;i<COMMAND_COUNT;i++)
         commandTable[i] = temp;
-    for(int i=0;i<PIPE_COUNT;i++)
-        allPipes[i][0]=-1,allPipes[i][1]=-1;
-    for(int j=0;j<COMMAND_NUM;j++)
-        commandsPara[j] = NULL;
+    // for(int i=0;i<PIPE_COUNT;i++)
+    //     allPipes[i][0]=-1,allPipes[i][1]=-1;
+    // for(int j=0;j<COMMAND_NUM;j++)
+    //     commandsPara[j] = NULL;
     memset(commandInput,'\0',sizeof(commandInput));
     memset(commands,0,sizeof(commands));
+    memset(allPipes,-1,sizeof(allPipes));
+    memset(reInFile,0,sizeof(reInFile));
+    memset(reOutFile,0,sizeof(reOutFile));
+    memset(commandsPara,0,sizeof(commandsPara));
 
 }
 
@@ -76,7 +81,7 @@ int redirect(int s,int e,int type)
         s++;
     while(s<=e)
     {
-        if(commandInput[s]==' ')
+        if(commandInput[s]==' ' || commandInput[s] == '<' || commandInput[s] == '>')
             break;
         if(type == 0)
             reInFile[j++] =commandInput[s++];
@@ -137,6 +142,57 @@ void trans(int cur)
     commandsPara[t] = NULL;
 }
 
+void openFilesAndPipes(int cur)
+{
+    // may need this
+    if(commandTable[cur].pipeIn!=-1)
+        if (allPipes[commandTable[cur].pipeIn][0]==-1)
+            pipe(allPipes[commandTable[cur].pipeIn]);
+    if(commandTable[cur].pipeOut!=-1)
+        if (allPipes[commandTable[cur].pipeOut][1]==-1)
+            pipe(allPipes[commandTable[cur].pipeOut]);            
+    if(commandTable[cur].reIn!=-1)
+        commandTable[cur].reIn = open(reInFile,O_RDONLY);
+    if(commandTable[cur].reOut!=-1)
+        commandTable[cur].reOut = open(reOutFile,O_WRONLY);
+}
+
+void closeFiles(int cur)//close redirect files in father process
+{
+    if(commandTable[cur].reIn!=-1)
+        close(commandTable[cur].reIn);
+    if(commandTable[cur].reOut!=-1)
+        close(commandTable[cur].reOut);
+    // pipes close in the end of all execs
+}
+
+void closePipes()
+{
+    for(int i=0;allPipes[i][0]!=-1;i++)
+        close(allPipes[i][0]),close(allPipes[i][1]);
+}
+
+void changeIO(int cur)// in child process
+{
+    int in=commandTable[cur].reIn;
+    int out=commandTable[cur].reOut;
+    if(in ==-1)
+        in = commandTable[cur].pipeIn;
+    if(out==-1)
+        out= commandTable[cur].pipeOut;
+    if(in!=-1)
+    {
+        close(0);
+        dup(in);
+        close(in);
+    }
+    if(out!=-1)
+    {
+        close(1);
+        dup(out);
+        close(out);
+    }
+}
 
 int main(int argc,char ** argv)
 {
