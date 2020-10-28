@@ -67,7 +67,9 @@ void initCommand()
     //     commandsPara[j] = NULL;
     memset(commandInput,'\0',sizeof(commandInput));
     memset(commands,0,sizeof(commands));
-    memset(allPipes,-1,sizeof(allPipes));
+    // memset(allPipes,-1,sizeof(allPipes));
+    for(int i=0;i<PIPE_COUNT;i++)
+        allPipes[i][0]=-1,allPipes[i][1]=-1;
     memset(reInFile,0,sizeof(reInFile));
     memset(reOutFile,0,sizeof(reOutFile));
     memset(commandsPara,0,sizeof(commandsPara));
@@ -147,14 +149,17 @@ void openFilesAndPipes(int cur)
     // may need this
     if(commandTable[cur].pipeIn!=-1)
         if (allPipes[commandTable[cur].pipeIn][0]==-1)
+        {
             pipe(allPipes[commandTable[cur].pipeIn]);
+            printf("here\n");
+        }
     if(commandTable[cur].pipeOut!=-1)
         if (allPipes[commandTable[cur].pipeOut][1]==-1)
             pipe(allPipes[commandTable[cur].pipeOut]);            
     if(commandTable[cur].reIn!=-1)
         commandTable[cur].reIn = open(reInFile,O_RDONLY);
     if(commandTable[cur].reOut!=-1)
-        commandTable[cur].reOut = open(reOutFile,O_WRONLY);
+        commandTable[cur].reOut = open(reOutFile,O_WRONLY|O_CREAT,S_IRUSR);
 }
 
 void closeFiles(int cur)//close redirect files in father process
@@ -176,10 +181,11 @@ void changeIO(int cur)// in child process
 {
     int in=commandTable[cur].reIn;
     int out=commandTable[cur].reOut;
-    if(in ==-1)
-        in = commandTable[cur].pipeIn;
-    if(out==-1)
-        out= commandTable[cur].pipeOut;
+    printf("in:%d    out:%d\n",in,out);
+    if(in ==-1&&commandTable[cur].pipeIn!=-1)
+        in = allPipes[commandTable[cur].pipeIn][0];
+    if(out==-1&&commandTable[cur].pipeOut!=-1)
+        out= allPipes[commandTable[cur].pipeOut][1];
     if(in!=-1)
     {
         close(0);
@@ -192,6 +198,7 @@ void changeIO(int cur)// in child process
         dup(out);
         close(out);
     }
+    
 }
 
 void callChild()
@@ -201,7 +208,12 @@ void callChild()
     for(int i=0;i<commandNum;i++)
     {
         trans(i);
+        printf("pipe in:%d   out:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
+        printf("before in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
         openFilesAndPipes(i);
+        // printf("after in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
+        printf("after in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
+
         // printf("%s\n",commandsPara[0]);
         
         int pid = fork();
@@ -222,20 +234,20 @@ void callChild()
 
 int main(int argc,char ** argv)
 {
-    /*
-    initCommand();
-    scanf("%[^\n]",commandInput);
-    praser();
-    for(int i=0;i<commandNum;i++)
-    {
-        //printf("start:%d   end:%d\n",commandTable[i].startPosi,commandTable[i].endPosi);
-        //printf("pipeS:%d   pipeE:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
-        trans(i);
-        for(int j=0;commandsPara[j]!=NULL;j++)
-           printf("%s\n",commandsPara[j]);
-        printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
-    }
-    */
+    
+    // initCommand();
+    // scanf("%[^\n]",commandInput);
+    // praser();
+    // for(int i=0;i<commandNum;i++)
+    // {
+    //     //printf("start:%d   end:%d\n",commandTable[i].startPosi,commandTable[i].endPosi);
+    //     //printf("pipeS:%d   pipeE:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
+    //     trans(i);
+    //     for(int j=0;commandsPara[j]!=NULL;j++)
+    //        printf("%s\n",commandsPara[j]);
+    //     printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
+    // }
+    
     while(1)
     {
         initCommand();
