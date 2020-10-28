@@ -74,7 +74,7 @@ void initCommand()
 
 }
 
-int redirect(int s,int e,int type)
+int redirect(int s,int e,int type)//parse redirection word
 {
     int j=0;
     while(commandInput[s]==' ')
@@ -100,8 +100,8 @@ void trans(int cur)
         s++;
     while(commandInput[e]==' ')
         e--;
-    printf("cur: %d\n",cur);
-    printf("s:%d e:%d\n",s,e);
+    // printf("cur: %d\n",cur);
+    // printf("s:%d e:%d\n",s,e);
     for(int i=s;i<=e;i++)
     {
         if(commandInput[i]==' ')
@@ -166,7 +166,7 @@ void closeFiles(int cur)//close redirect files in father process
     // pipes close in the end of all execs
 }
 
-void closePipes()
+void closePipes()// close all pipes when totally finished all executions
 {
     for(int i=0;allPipes[i][0]!=-1;i++)
         close(allPipes[i][0]),close(allPipes[i][1]);
@@ -194,8 +194,35 @@ void changeIO(int cur)// in child process
     }
 }
 
+void callChild()
+{
+    int status =0;
+    printf("command num: %d\n",commandNum);
+    for(int i=0;i<commandNum;i++)
+    {
+        trans(i);
+        openFilesAndPipes(i);
+        // printf("%s\n",commandsPara[0]);
+        
+        int pid = fork();
+        if(pid==0)
+        {
+            changeIO(i);
+            execvp(commandsPara[0],commandsPara);
+        }
+        else
+        {
+            wait(&status);
+            closeFiles(i);
+        }
+        
+    }
+    closePipes();
+}
+
 int main(int argc,char ** argv)
 {
+    /*
     initCommand();
     scanf("%[^\n]",commandInput);
     praser();
@@ -207,6 +234,20 @@ int main(int argc,char ** argv)
         for(int j=0;commandsPara[j]!=NULL;j++)
            printf("%s\n",commandsPara[j]);
         printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
+    }
+    */
+    while(1)
+    {
+        initCommand();
+        printf("msh: ");
+        scanf("%[^\n]%*c",commandInput);
+        if(strcmp(commandInput,"exit")==0)
+            break;
+        // printf("test \n");        
+        printf("input:%s\n",commandInput);
+        praser();
+        callChild();
+        //fflush(stdin);
     }
     return 0;
 }
