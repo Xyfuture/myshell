@@ -152,7 +152,7 @@ void openFilesAndPipes(int cur)
     if(commandTable[cur].reIn!=-1)
         commandTable[cur].reIn = open(reInFile,O_RDONLY);
     if(commandTable[cur].reOut!=-1)
-        commandTable[cur].reOut = open(reOutFile,O_WRONLY|O_CREAT,S_IRUSR);
+        commandTable[cur].reOut = open(reOutFile,O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
     if(commandTable[cur].pipeIn != -1)
         commandTable[cur].pipeIn = allPipes[commandTable[cur].pipeIn][0];
     if(commandTable[cur].pipeOut != -1)

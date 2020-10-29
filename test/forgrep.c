@@ -26,7 +26,8 @@ int main()
     else
     {
         int status;
-        // wait(&status); 
+        wait(&status); 
+        write(fds[1],"\n",1);
         pid2 = fork();
         if(pid2 == 0)
         {
@@ -39,8 +40,10 @@ int main()
         else
         {
             int status;
+            close(fds[1]);
+            close(fds[0]);
             waitpid(pid2,&status,0); 
-            printf("finished");
+            printf("finished\n");
         }
     }
 
