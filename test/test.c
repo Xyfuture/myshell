@@ -1,10 +1,10 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #define PIPE_COUNT 128
 #define COMMAND_BUF 256 // per command character size   一个参数的长度
 #define COMMAND_NUM 128 // command parameters          多少个参数
@@ -181,21 +181,22 @@ void changeIO(int cur)// in child process
 {
     int in=commandTable[cur].reIn;
     int out=commandTable[cur].reOut;
-    printf("in:%d    out:%d\n",in,out);
+    
     if(in ==-1&&commandTable[cur].pipeIn!=-1)
         in = allPipes[commandTable[cur].pipeIn][0];
     if(out==-1&&commandTable[cur].pipeOut!=-1)
         out= allPipes[commandTable[cur].pipeOut][1];
+    printf("in:%d    out:%d\n",in,out);
     if(in!=-1)
     {
-        close(0);
-        dup(in);
+        close(allPipes[commandTable[cur].pipeIn][1]);
+        dup2(in,STDIN_FILENO);
         close(in);
     }
     if(out!=-1)
     {
-        close(1);
-        dup(out);
+        close(allPipes[commandTable[cur].pipeOut][0]);
+        dup2(out,STDOUT_FILENO);
         close(out);
     }
     
@@ -204,27 +205,36 @@ void changeIO(int cur)// in child process
 void callChild()
 {
     int status =0;
-    printf("command num: %d\n",commandNum);
+    // printf("command num: %d\n",commandNum);
     for(int i=0;i<commandNum;i++)
     {
         trans(i);
-        printf("pipe in:%d   out:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
-        printf("before in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
+        // printf("pipe in:%d   out:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
+        // printf("before in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
         openFilesAndPipes(i);
         // printf("after in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
-        printf("after in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
+        // printf("after in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
 
-        // printf("%s\n",commandsPara[0]);
+        printf("current command: %s\n",commandsPara[0]);
         
         int pid = fork();
         if(pid==0)
         {
             changeIO(i);
-            execvp(commandsPara[0],commandsPara);
+            int state=0;
+            state = execvp(commandsPara[0],commandsPara);
+            if(state == -1)
+            {
+                printf("exectue failed\n");
+                exit(EXIT_SUCCESS);
+            }
         }
         else
         {
             wait(&status);
+            if(status!=0)
+                printf("WRONG\n");
+            printf("child process finished\n");
             closeFiles(i);
         }
         
@@ -256,7 +266,7 @@ int main(int argc,char ** argv)
         if(strcmp(commandInput,"exit")==0)
             break;
         // printf("test \n");        
-        printf("input:%s\n",commandInput);
+        // printf("input:%s\n",commandInput);
         praser();
         callChild();
         //fflush(stdin);
