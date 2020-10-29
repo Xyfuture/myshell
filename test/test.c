@@ -146,20 +146,17 @@ void trans(int cur)
 
 void openFilesAndPipes(int cur)
 {
-    // may need this
-    if(commandTable[cur].pipeIn!=-1)
-        if (allPipes[commandTable[cur].pipeIn][0]==-1)
-        {
-            pipe(allPipes[commandTable[cur].pipeIn]);
-            printf("here\n");
-        }
     if(commandTable[cur].pipeOut!=-1)
         if (allPipes[commandTable[cur].pipeOut][1]==-1)
-            pipe(allPipes[commandTable[cur].pipeOut]);            
+            pipe(allPipes[commandTable[cur].pipeOut]);
     if(commandTable[cur].reIn!=-1)
         commandTable[cur].reIn = open(reInFile,O_RDONLY);
     if(commandTable[cur].reOut!=-1)
         commandTable[cur].reOut = open(reOutFile,O_WRONLY|O_CREAT,S_IRUSR);
+    if(commandTable[cur].pipeIn != -1)
+        commandTable[cur].pipeIn = allPipes[commandTable[cur].pipeIn][0];
+    if(commandTable[cur].pipeOut != -1)
+        commandTable[cur].pipeOut = allPipes[commandTable[cur].pipeOut][1];
 }
 
 void closeFiles(int cur)//close redirect files in father process
@@ -181,21 +178,26 @@ void changeIO(int cur)// in child process
 {
     int in=commandTable[cur].reIn;
     int out=commandTable[cur].reOut;
-    
-    if(in ==-1&&commandTable[cur].pipeIn!=-1)
-        in = allPipes[commandTable[cur].pipeIn][0];
-    if(out==-1&&commandTable[cur].pipeOut!=-1)
-        out= allPipes[commandTable[cur].pipeOut][1];
+    printf("first in:%d    out:%d\n",in,out);
+    // if(in ==-1&&commandTable[cur].pipeIn!=-1)
+    //     in = allPipes[commandTable[cur].pipeIn][0];
+    // if(out==-1&&commandTable[cur].pipeOut!=-1)
+    //     out= allPipes[commandTable[cur].pipeOut][1];
+    printf("pipeS:%d   pipeE:%d\n",commandTable[cur].pipeIn,commandTable[cur].pipeOut);
+    if(in == -1)
+        in = commandTable[cur].pipeIn;
+    if(out == -1)
+        out= commandTable[cur].pipeOut;
     printf("in:%d    out:%d\n",in,out);
     if(in!=-1)
     {
-        close(allPipes[commandTable[cur].pipeIn][1]);
+        //close(allPipes[commandTable[cur].pipeIn][1]);
         dup2(in,STDIN_FILENO);
         close(in);
     }
     if(out!=-1)
     {
-        close(allPipes[commandTable[cur].pipeOut][0]);
+        //close(allPipes[commandTable[cur].pipeOut][0]);
         dup2(out,STDOUT_FILENO);
         close(out);
     }
@@ -239,37 +241,40 @@ void callChild()
         }
         
     }
+
     closePipes();
 }
 
 int main(int argc,char ** argv)
 {
     
-    // initCommand();
-    // scanf("%[^\n]",commandInput);
-    // praser();
-    // for(int i=0;i<commandNum;i++)
-    // {
-    //     //printf("start:%d   end:%d\n",commandTable[i].startPosi,commandTable[i].endPosi);
-    //     //printf("pipeS:%d   pipeE:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
-    //     trans(i);
-    //     for(int j=0;commandsPara[j]!=NULL;j++)
-    //        printf("%s\n",commandsPara[j]);
-    //     printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
-    // }
-    
-    while(1)
+    initCommand();
+    scanf("%[^\n]",commandInput);
+    praser();
+    for(int i=0;i<commandNum;i++)
     {
-        initCommand();
-        printf("msh: ");
-        scanf("%[^\n]%*c",commandInput);
-        if(strcmp(commandInput,"exit")==0)
-            break;
-        // printf("test \n");        
-        // printf("input:%s\n",commandInput);
-        praser();
-        callChild();
-        //fflush(stdin);
+        //printf("start:%d   end:%d\n",commandTable[i].startPosi,commandTable[i].endPosi);
+        trans(i);
+        openFilesAndPipes(i);
+        for(int j=0;commandsPara[j]!=NULL;j++)
+           printf("%s\n",commandsPara[j]);
+        printf("pipeS:%d   pipeE:%d\n",commandTable[i].pipeIn,commandTable[i].pipeOut);
+        printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
+        printf("file in:%s  file out:%s\n",reInFile,reOutFile);
     }
+    
+    // while(1)
+    // {
+    //     initCommand();
+    //     printf("msh: ");
+    //     scanf("%[^\n]%*c",commandInput);
+    //     if(strcmp(commandInput,"exit")==0)
+    //         break;
+    //     // printf("test \n");        
+    //     // printf("input:%s\n",commandInput);
+    //     praser();
+    //     callChild();
+    //     //fflush(stdin);
+    // }
     return 0;
 }
