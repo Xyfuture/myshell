@@ -7,8 +7,8 @@
 #include <stdlib.h>
 
 char words[] = "hello,world! \n";
-char *commands[]={"grep","l",NULL};
-char *commands2[]={"./output",NULL};
+char *commands1[]={"grep","l",NULL};
+char *commands2[]={"ls",NULL};
 int main()
 {
     int fds[2];
@@ -26,7 +26,7 @@ int main()
     else
     {
         int status;
-        wait(&status); 
+        // wait(&status); 
         pid2 = fork();
         if(pid2 == 0)
         {
@@ -34,12 +34,12 @@ int main()
             dup2(fds[0],STDIN_FILENO);
             close(fds[1]);
             close(fds[0]);
-            execvp(commands[0],commands);
+            execvp(commands1[0],commands1);
         }
         else
         {
             int status;
-            wait(&status); 
+            waitpid(pid2,&status,0); 
             printf("finished");
         }
     }
