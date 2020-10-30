@@ -31,6 +31,16 @@ char *commandsPara[COMMAND_NUM]; // for execvp 每个命令现场生成
 char reInFile[COMMAND_BUF];
 char reOutFile[COMMAND_BUF];
 int allPipes[PIPE_COUNT][2];
+pid_t childPid;
+
+
+void sigcat()
+{
+    if(childPid == 0)
+        return ;
+    else if (childPid > 0)
+        kill(childPid,SIGINT);
+}
 
 void praser()
 {
@@ -73,6 +83,7 @@ void initCommand()
     memset(reInFile,0,sizeof(reInFile));
     memset(reOutFile,0,sizeof(reOutFile));
     memset(commandsPara,0,sizeof(commandsPara));
+    childPid = 0;
 
 }
 
@@ -190,17 +201,17 @@ void changeIO(int cur)// in child process
 {
     int in=commandTable[cur].reIn;
     int out=commandTable[cur].reOut;
-    printf("first in:%d    out:%d\n",in,out);
+    // printf("first in:%d    out:%d\n",in,out);
     // if(in ==-1&&commandTable[cur].pipeIn!=-1)
     //     in = allPipes[commandTable[cur].pipeIn][0];
     // if(out==-1&&commandTable[cur].pipeOut!=-1)
     //     out= allPipes[commandTable[cur].pipeOut][1];
-    printf("pipeS:%d   pipeE:%d\n",commandTable[cur].pipeIn,commandTable[cur].pipeOut);
+    // printf("pipeS:%d   pipeE:%d\n",commandTable[cur].pipeIn,commandTable[cur].pipeOut);
     if(in == -1)
         in = commandTable[cur].pipeIn;
     if(out == -1)
         out= commandTable[cur].pipeOut;
-    printf("in:%d    out:%d\n",in,out);
+    // printf("in:%d    out:%d\n",in,out);
     if(in!=-1)
     {
         //close(allPipes[commandTable[cur].pipeIn][1]);
@@ -229,10 +240,10 @@ void callChild()
         // printf("after in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
         // printf("after in:%d   out:%d\n",allPipes[commandTable[i].pipeIn][0],allPipes[commandTable[i].pipeOut][1]);
 
-        printf("current command: %s\n",commandsPara[0]);
+        // printf("current command: %s\n",commandsPara[0]);
         
-        int pid = fork();
-        if(pid==0)
+        childPid = fork();
+        if(childPid==0)
         {
             changeIO(i);
             closeFilesAndPipes(i);
@@ -240,17 +251,17 @@ void callChild()
             state = execvp(commandsPara[0],commandsPara);
             if(state == -1)
             {
-                printf("exectue failed\n");
-                exit(EXIT_SUCCESS);
+                // printf("exectue failed\n");
+                exit(EXIT_FAILURE);
             }
         }
         else
         {
             closeFilesAndPipes(i);
-            wait(&status);
-            if(status!=0)
-                printf("WRONG\n");
-            printf("child process finished\n");
+            waitpid(childPid,&status,0);
+            // if(status!=0)
+                // printf("WRONG\n");
+            // printf("child process finished\n");
             // closeFiles(i);
         }
         
@@ -276,12 +287,35 @@ int main(int argc,char ** argv)
     //     printf("in:%d   out:%d\n",commandTable[i].reIn,commandTable[i].reOut);
     //     printf("file in:%s  file out:%s\n",reInFile,reOutFile);
     // }
-    
+    signal(SIGINT,sigcat);
     while(1)
     {
         initCommand();
-        printf("msh: ");
-        scanf("%[^\n]%*c",commandInput);
+        // printf("msh: ");
+        int cnt = 0;
+        char temp ;
+        int flag = 0;
+        while(1)
+        {
+            temp = getchar();
+            if(temp == '\n')
+            {
+                if(cnt == 0)
+                    flag=1;
+                break;
+            }
+            else if(temp == EOF)
+            {
+                if(cnt ==0 )
+                    return 0;
+                flag = 2;
+                break;
+            }
+            commandInput[cnt++]= temp;
+        }
+        commandInput[cnt] = '\0';
+        if(flag==1)
+            continue;
         if(strcmp(commandInput,"exit")==0)
             break;
         // printf("test \n");        
@@ -289,6 +323,8 @@ int main(int argc,char ** argv)
         praser();
         callChild();
         //fflush(stdin);
+        if (flag == 2)
+            break;
     }
     return 0;
 }
