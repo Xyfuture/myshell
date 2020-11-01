@@ -36,6 +36,7 @@ pid_t childPid;
 
 void sigcat()
 {
+    // return ;
     if(childPid == 0)
         return ;
     else if (childPid > 0)
@@ -259,15 +260,11 @@ void callChild()
         {
             closeFilesAndPipes(i);
             waitpid(childPid,&status,0);
-            // if(status!=0)
-                // printf("WRONG\n");
-            // printf("child process finished\n");
-            // closeFiles(i);
+            if(status!=0)
+                printf("WRONG EXECUTE\n");
         }
         
     }
-
-    // closePipes();
 }
 
 int main(int argc,char ** argv)
@@ -291,7 +288,7 @@ int main(int argc,char ** argv)
     while(1)
     {
         initCommand();
-        // printf("msh: ");
+        printf("msh: ");
         int cnt = 0;
         char temp ;
         int flag = 0;
